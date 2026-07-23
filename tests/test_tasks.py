@@ -67,6 +67,62 @@ class TestListTasks:
         assert body[0]["priority"] == "High"
         assert body[0]["title"] == "High one"
 
+    def test_list_tasks_search_matches_title_and_description_case_insensitively(
+        self, client
+    ):
+        client.post(
+            "/tasks",
+            json={"title": "Write docs", "description": "Need follow-up"},
+        )
+        client.post(
+            "/tasks",
+            json={"title": "Ship feature", "description": "Docs are pending"},
+        )
+
+        response = client.get("/tasks", params={"q": "docs"})
+
+        assert response.status_code == 200
+        body = response.json()
+        assert len(body) == 2
+        assert {task["title"] for task in body} == {"Write docs", "Ship feature"}
+
+    def test_list_tasks_combines_status_and_priority_filters_with_and_logic(self, client):
+        client.post(
+            "/tasks",
+            json={"title": "Match both", "status": "InProgress", "priority": "High"},
+        )
+        client.post(
+            "/tasks",
+            json={"title": "Wrong status", "status": "ToDo", "priority": "High"},
+        )
+        client.post(
+            "/tasks",
+            json={"title": "Wrong priority", "status": "InProgress", "priority": "Low"},
+        )
+
+        response = client.get(
+            "/tasks",
+            params={"status": "InProgress", "priority": "High"},
+        )
+
+        assert response.status_code == 200
+        body = response.json()
+        assert len(body) == 1
+        assert body[0]["title"] == "Match both"
+
+    def test_list_tasks_no_matches_returns_200_and_empty_list(self, client):
+        client.post("/tasks", json={"title": "Existing task"})
+
+        response = client.get("/tasks", params={"q": "nothing"})
+
+        assert response.status_code == 200
+        assert response.json() == []
+
+    def test_list_tasks_invalid_filter_value_returns_422(self, client):
+        response = client.get("/tasks", params={"status": "Unknown"})
+
+        assert response.status_code == 422
+
 
 class TestGetTask:
     def test_get_task_by_id_returns_task(self, client, created_task):
