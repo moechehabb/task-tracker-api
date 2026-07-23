@@ -94,6 +94,19 @@ class TestPatchTask:
         assert body["assignee"] == created_task["assignee"]
         assert body["id"] == created_task["id"]
 
+    def test_patch_status_only_keeps_existing_description(self, client):
+        create_response = client.post(
+            "/tasks",
+            json={"title": "Task with description", "description": "Keep me"},
+        )
+        assert create_response.status_code == 201
+        task_id = create_response.json()["id"]
+
+        response = client.patch(f"/tasks/{task_id}", json={"status": "InProgress"})
+        assert response.status_code == 200
+        assert response.json()["description"] == "Keep me"
+        assert response.json()["status"] == "InProgress"
+
     def test_patch_not_found_returns_404(self, client):
         response = client.patch("/tasks/does-not-exist", json={"title": "x"})
         assert response.status_code == 404

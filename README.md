@@ -36,6 +36,23 @@ The API will be available at:
 - http://127.0.0.1:8000/docs for the Swagger UI
 - http://127.0.0.1:8000/health for the health check endpoint
 
+## View the frontend
+
+The frontend is a static page that calls the backend API.
+
+1. Start the backend as shown above.
+2. In a second terminal, serve the frontend files:
+
+```bash
+python3 -m http.server 5500 --directory frontend
+```
+
+3. Open the UI in your browser:
+
+```text
+http://127.0.0.1:5500
+```
+
 ## Run tests
 
 ```bash

@@ -49,7 +49,7 @@ def update_task(task_id: str, payload: TaskUpdate) -> Optional[TaskResponse]:
     if not updates:
         return task
 
-    if updates.get("description") is None:
+    if "description" in updates and updates["description"] is None:
         updates["description"] = ""
 
     updated = task.model_copy(
