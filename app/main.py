@@ -49,10 +49,23 @@ def health_check() -> HealthResponse:
 
 @app.get("/tasks", response_model=list[TaskResponse], tags=["tasks"])
 def list_tasks(
+    q: Optional[str] = None,
     status: Optional[TaskStatus] = None,
     priority: Optional[TaskPriority] = None,
+    assignee: Optional[str] = None,
 ) -> list[TaskResponse]:
-    return storage.get_all_tasks(status=status, priority=priority)
+    tasks = storage.get_all_tasks(status=status, priority=priority)
+    if q is not None:
+        needle = q.lower()
+        tasks = [
+            task
+            for task in tasks
+            if needle in task.title.lower() or needle in task.description.lower()
+        ]
+    if assignee is not None:
+        needle = assignee.lower()
+        tasks = [task for task in tasks if task.assignee is not None and task.assignee.lower() == needle]
+    return tasks
 
 
 @app.get("/tasks/{task_id}", response_model=TaskResponse, tags=["tasks"])
