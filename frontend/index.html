@@ -258,6 +258,42 @@
                 color: var(--accent);
             }
 
+            .filters-bar {
+                display: grid;
+                grid-template-columns: minmax(220px, 1.6fr) repeat(3, minmax(140px, 1fr)) auto;
+                gap: 10px;
+                align-items: end;
+                padding: 0 24px 16px;
+            }
+
+            .filter-field {
+                display: grid;
+                gap: 6px;
+            }
+
+            .filter-field label {
+                font-size: 0.8rem;
+                font-weight: 700;
+                color: var(--muted);
+            }
+
+            .filter-field input,
+            .filter-field select {
+                width: 100%;
+                border: 1px solid var(--border);
+                border-radius: 10px;
+                padding: 9px 11px;
+                font: inherit;
+                background: var(--surface);
+                color: var(--text);
+            }
+
+            .filter-field input:focus,
+            .filter-field select:focus {
+                outline: 2px solid var(--accent-soft);
+                border-color: var(--accent);
+            }
+
             .modal-overlay {
                 position: fixed;
                 inset: 0;
@@ -380,6 +416,35 @@
             </div>
         </header>
         <main>
+            <section class="filters-bar" aria-label="Task filters">
+                <div class="filter-field">
+                    <label for="filter-search">Search</label>
+                    <input id="filter-search" type="text" placeholder="Search tasks" />
+                </div>
+                <div class="filter-field">
+                    <label for="filter-status">Status</label>
+                    <select id="filter-status">
+                        <option value="">All</option>
+                        <option value="ToDo">ToDo</option>
+                        <option value="InProgress">In Progress</option>
+                        <option value="Done">Completed</option>
+                    </select>
+                </div>
+                <div class="filter-field">
+                    <label for="filter-priority">Priority</label>
+                    <select id="filter-priority">
+                        <option value="">All</option>
+                        <option value="High">High</option>
+                        <option value="Medium">Medium</option>
+                        <option value="Low">Low</option>
+                    </select>
+                </div>
+                <div class="filter-field">
+                    <label for="filter-assignee">Assignee</label>
+                    <input id="filter-assignee" type="text" placeholder="Exact match" />
+                </div>
+                <button type="button" id="clear-filters-btn" class="action-button secondary">Clear filters</button>
+            </section>
             <section id="board" class="board" aria-live="polite"></section>
         </main>
 
@@ -436,7 +501,7 @@
             const statusLabels = {
                 'ToDo': 'ToDo',
                 'InProgress': 'In Progress',
-                'Done': 'Done'
+                'Done': 'Completed'
             };
             const PRIORITY_ORDER = {
                 'High': 0,
@@ -449,6 +514,17 @@
             let errorMessage = '';
 
             const board = document.getElementById('board');
+            const searchFilterInput = document.getElementById('filter-search');
+            const statusFilterSelect = document.getElementById('filter-status');
+            const priorityFilterSelect = document.getElementById('filter-priority');
+            const assigneeFilterInput = document.getElementById('filter-assignee');
+            const clearFiltersButton = document.getElementById('clear-filters-btn');
+            let activeFilters = {
+                q: '',
+                status: '',
+                priority: '',
+                assignee: '',
+            };
 
             function getTaskIdValue(task) {
                 const numericId = Number(task.id);
@@ -528,12 +604,38 @@
                 board.innerHTML = groupedTasks.join('');
             }
 
-            async function fetchTasks() {
+            function buildFilterQuery(filters = activeFilters) {
+                const params = new URLSearchParams();
+                if (filters?.q) {
+                    params.set('q', filters.q);
+                }
+                if (filters?.status) {
+                    params.set('status', filters.status);
+                }
+                if (filters?.priority) {
+                    params.set('priority', filters.priority);
+                }
+                if (filters?.assignee) {
+                    params.set('assignee', filters.assignee);
+                }
+
+                const queryString = params.toString();
+                return queryString ? `?${queryString}` : '';
+            }
+
+            async function fetchTasks(filters = activeFilters) {
+                activeFilters = {
+                    q: filters?.q ?? '',
+                    status: filters?.status ?? '',
+                    priority: filters?.priority ?? '',
+                    assignee: filters?.assignee ?? '',
+                };
+
                 boardState = 'loading';
                 render();
 
                 try {
-                    const response = await fetch(`${API_BASE}/tasks`);
+                    const response = await fetch(`${API_BASE}/tasks${buildFilterQuery(activeFilters)}`);
                     if (!response.ok) {
                         throw new Error(`Request failed with status ${response.status}`);
                     }
@@ -634,9 +736,57 @@
                 formBanner.classList.add('visible');
             }
 
+            function syncFilterInputs(filters = activeFilters) {
+                if (searchFilterInput) {
+                    searchFilterInput.value = filters.q || '';
+                }
+                if (statusFilterSelect) {
+                    statusFilterSelect.value = filters.status || '';
+                }
+                if (priorityFilterSelect) {
+                    priorityFilterSelect.value = filters.priority || '';
+                }
+                if (assigneeFilterInput) {
+                    assigneeFilterInput.value = filters.assignee || '';
+                }
+            }
+
+            function applyFiltersFromInputs() {
+                const filters = {
+                    q: searchFilterInput?.value.trim() || '',
+                    status: statusFilterSelect?.value || '',
+                    priority: priorityFilterSelect?.value || '',
+                    assignee: assigneeFilterInput?.value.trim() || '',
+                };
+                return fetchTasks(filters);
+            }
+
             newTaskButton.addEventListener('click', () => openModal('create'));
             modalCloseButton.addEventListener('click', closeModal);
             cancelTaskButton.addEventListener('click', closeModal);
+
+            searchFilterInput?.addEventListener('input', () => {
+                void applyFiltersFromInputs();
+            });
+            statusFilterSelect?.addEventListener('change', () => {
+                void applyFiltersFromInputs();
+            });
+            priorityFilterSelect?.addEventListener('change', () => {
+                void applyFiltersFromInputs();
+            });
+            assigneeFilterInput?.addEventListener('input', () => {
+                void applyFiltersFromInputs();
+            });
+            clearFiltersButton?.addEventListener('click', () => {
+                activeFilters = {
+                    q: '',
+                    status: '',
+                    priority: '',
+                    assignee: '',
+                };
+                syncFilterInputs(activeFilters);
+                void fetchTasks(activeFilters);
+            });
 
             modalOverlay.addEventListener('click', (event) => {
                 if (event.target === modalOverlay) {
