@@ -1,0 +1,2 @@
+I am creating a Kanban-Style Task Tracker application and would like to implement a search/combined filter bar functionality. I plan to update the API GET /tasks endpoint to handles this with in-process filtering. The implementation should automatically cover combined filtering: substring match is enough for the title/description, and the user can filter by status, priority, and assigned. There shouldn't be any third party libraries for this. 
+
