@@ -207,3 +207,50 @@ class TestDeleteTask:
     def test_delete_missing_returns_404(self, client):
         response = client.delete("/tasks/does-not-exist")
         assert response.status_code == 404
+
+
+class TestActivityLog:
+    def test_activity_log_records_create_update_delete_events(self, client):
+        create_response = client.post(
+            "/tasks",
+            json={"title": "Record activity", "description": "Track this task"},
+        )
+        assert create_response.status_code == 201
+        task_id = create_response.json()["id"]
+
+        update_response = client.patch(
+            f"/tasks/{task_id}", json={"title": "Record activity updated"}
+        )
+        assert update_response.status_code == 200
+
+        delete_response = client.delete(f"/tasks/{task_id}")
+        assert delete_response.status_code == 204
+
+        activity_response = client.get("/activity")
+        assert activity_response.status_code == 200
+        events = activity_response.json()
+
+        assert events[0]["event_type"] == "task_deleted"
+        assert events[0]["task_id"] == task_id
+        assert events[1]["event_type"] == "task_updated"
+        assert events[1]["task_id"] == task_id
+        assert events[1]["changed_fields"] == ["title"]
+        assert events[2]["event_type"] == "task_created"
+        assert events[2]["task_id"] == task_id
+
+    def test_activity_list_default_limit_and_pagination(self, client):
+        task_ids = []
+        for index in range(6):
+            response = client.post("/tasks", json={"title": f"Task {index}"})
+            assert response.status_code == 201
+            task_ids.append(response.json()["id"])
+
+        first_page = client.get("/activity")
+        assert first_page.status_code == 200
+        assert len(first_page.json()) == 5
+        assert first_page.json()[0]["task_id"] == task_ids[-1]
+
+        second_page = client.get("/activity", params={"limit": 2, "offset": 1})
+        assert second_page.status_code == 200
+        assert len(second_page.json()) == 2
+        assert second_page.json()[0]["task_id"] == task_ids[-2]
