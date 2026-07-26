@@ -5,7 +5,7 @@ from fastapi import FastAPI, HTTPException, status
 
 from app import storage
 from app.business_rules import validate_status_transition
-from app.models import TaskCreate, TaskPriority, TaskResponse, TaskStatus, TaskUpdate
+from app.models import ActivityEvent, TaskCreate, TaskPriority, TaskResponse, TaskStatus, TaskUpdate
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -78,7 +78,15 @@ def get_task(task_id: str) -> TaskResponse:
 
 @app.post("/tasks", response_model=TaskResponse, status_code=status.HTTP_201_CREATED, tags=["tasks"])
 def create_task(payload: TaskCreate) -> TaskResponse:
-    return storage.add_task(payload)
+    task = storage.add_task(payload)
+    storage.record_event(
+        ActivityEvent(
+            event_type="task_created",
+            task_id=task.id,
+            timestamp=datetime.now(timezone.utc),
+        )
+    )
+    return task
 
 @app.patch("/tasks/{task_id}", response_model=TaskResponse, tags=["tasks"])
 def update_task(task_id: str, payload: TaskUpdate) -> TaskResponse:
@@ -87,14 +95,40 @@ def update_task(task_id: str, payload: TaskUpdate) -> TaskResponse:
         if existing is None:
             raise HTTPException(status_code=404, detail=f"Task with id {task_id} not found")
         validate_status_transition(existing.status, payload.status)
+    existing = storage.get_task_by_id(task_id)
+    if existing is None:
+        raise HTTPException(status_code=404, detail=f"Task with id {task_id} not found")
+
     task = storage.update_task(task_id, payload)
     if task is None:
         raise HTTPException(status_code=404, detail=f"Task with id {task_id} not found")
+
+    updates = payload.model_dump(exclude_unset=True)
+    changed_fields = [field for field in updates if getattr(existing, field) != updates[field]]
+    if changed_fields:
+        storage.record_event(
+            ActivityEvent(
+                event_type="task_updated",
+                task_id=task.id,
+                timestamp=datetime.now(timezone.utc),
+                changed_fields=changed_fields,
+            )
+        )
     return task
 
 @app.delete("/tasks/{task_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["tasks"])
 def delete_task(task_id: str) -> None:
     if not storage.delete_task(task_id):
-        raise HTTPException(status_code=404, detail=f"Task with id {task_id} not found")    
+        raise HTTPException(status_code=404, detail=f"Task with id {task_id} not found")
+    storage.record_event(
+        ActivityEvent(
+            event_type="task_deleted",
+            task_id=task_id,
+            timestamp=datetime.now(timezone.utc),
+        )
+    )
 
 
+@app.get("/activity", response_model=list[ActivityEvent], tags=["activity"])
+def list_activity(limit: int = 5, offset: int = 0) -> list[ActivityEvent]:
+    return storage.get_activity(limit=limit, offset=offset)
