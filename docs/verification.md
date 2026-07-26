@@ -84,3 +84,69 @@ $ python3 -m pytest -q tests/test_tasks.py -k "search_matches_title_and_descript
 - The frontend board renders the task columns and supports the new filter/search controls above the board.
 - The filter bar updates the visible board results without breaking the existing drag-and-drop interactions.
 - The modal flow remains available for creating and editing tasks.
+
+## Activity log verification
+The following pytest checks were added and verified for the activity log feature:
+
+- Task creation records a `task_created` event.
+- Task updates record a `task_updated` event with `changed_fields`.
+- Task deletion records a `task_deleted` event even after the task is gone.
+- `GET /activity` returns events ordered most recent first.
+- `GET /activity` supports `limit` and `offset` pagination and defaults to a reasonable page size.
+
+python3 -m pytest -q tests/test_tasks.py -k "TestActivityLog"
+
+2 passed, 22 deselected in 0.02s
+
+### Command run
+```bash
+python3 -m pytest -q tests/test_tasks.py -k "TestActivityLog"
+```
+
+### Result
+- The activity log tests passed and confirmed the event recording and listing behavior.
+
+## Break Test evidence for Activity Log
+A temporary regression was introduced by disabling the `task_deleted` event recording in `app/main.py`.
+
+### Observed failure
+- One activity log test failed because `GET /activity` no longer returned the deleted event.
+- The failure occurred in `TestActivityLog.test_activity_log_records_create_update_delete_events`.
+- Expected first event type: `task_deleted`; actual first event type: `task_updated`.
+
+### Console evidence
+```text
+F.                                                                       [100%]
+=================================== FAILURES ===================================
+____ TestActivityLog.test_activity_log_records_create_update_delete_events _____
+
+self = <test_tasks.TestActivityLog object at 0x1090719a0>
+client = <starlette.testclient.TestClient object at 0x109071eb0>
+
+    def test_activity_log_records_create_update_delete_events(self, client):
+        create_response = client.post(
+            "/tasks",
+            json={"title": "Record activity", "description": "Track this task"},
+        )
+        assert create_response.status_code == 201
+        task_id = create_response.json()["id"]
+    
+        update_response = client.patch(
+            f"/tasks/{task_id}", json={"title": "Record activity updated"}
+        )
+        assert update_response.status_code == 200
+    
+        delete_response = client.delete(f"/tasks/{task_id}")
+        assert delete_response.status_code == 204
+    
+        activity_response = client.get("/activity")
+        assert activity_response.status_code == 200
+        events = activity_response.json()
+    
+>       assert events[0]["event_type"] == "task_deleted"
+E       AssertionError: assert 'task_updated' == 'task_deleted'
+```
+
+### Restoration
+- The regression was reverted and the activity log tests were rerun successfully.
+- Confirmed `2 passed, 22 deselected` after restoration.

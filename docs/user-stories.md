@@ -33,3 +33,32 @@ Acceptance Criteria:
 3. Removing any single filter re-runs the query with the remaining conditions still applied.
 Notes: Naming consistency for assignee is the user's responsibility, since there are no user accounts. Tag and due-date filters are out of scope for Module 1.
 
+Feature 2: Activity Log
+
+ID: US-01
+Story: As a team member, I want an event to be recorded when a task is updated so that I can track changes made to a task.
+Acceptance Criteria:
+1. When a task's fields (such as title, description, or due date) are updated, an activity event is recorded with event type "task_updated", the task ID, and a timestamp.
+2. The recorded event includes which fields were changed.
+3. GET /activity includes "task_updated" events alongside other event types, in the order they occurred.
+
+ID: US-02
+Story: As a team member, I want an event to be recorded when a task is deleted so that I can track when tasks are removed.
+Acceptance Criteria:
+1. When a task is deleted, an activity event is recorded with event type "task_deleted", the task ID, and a timestamp.
+2. The event is recorded even though the underlying task no longer exists.
+3. GET /activity still returns "task_deleted" events for tasks that have since been removed.
+
+
+ID: US-03
+Story: As a team member, I want GET /activity to return events ordered by most recent first so that I can quickly see the latest changes.
+Acceptance Criteria:
+1. GET /activity returns events sorted in descending order by timestamp.
+2. If two events share the same timestamp, they are returned in the order they were recorded.
+3. The response format and fields remain consistent regardless of the number of events returned.
+REVISED US-03
+Story: As a team member, I want GET /activity to return events ordered by most recent first, with support for retrieving them in manageable pages, so that I can review recent activity without loading the entire history at once.
+Acceptance Criteria:
+1. GET /activity returns events sorted in descending order by timestamp.
+2. GET /activity supports optional pagination parameters (e.g., limit and offset) to control how many events are returned per request.
+3. If no pagination parameters are provided, the endpoint returns a reasonable default number of the most recent events rather than the full history.
