@@ -258,6 +258,42 @@
                 color: var(--accent);
             }
 
+            .filters-bar {
+                display: grid;
+                grid-template-columns: minmax(220px, 1.6fr) repeat(3, minmax(140px, 1fr)) auto;
+                gap: 10px;
+                align-items: end;
+                padding: 0 24px 16px;
+            }
+
+            .filter-field {
+                display: grid;
+                gap: 6px;
+            }
+
+            .filter-field label {
+                font-size: 0.8rem;
+                font-weight: 700;
+                color: var(--muted);
+            }
+
+            .filter-field input,
+            .filter-field select {
+                width: 100%;
+                border: 1px solid var(--border);
+                border-radius: 10px;
+                padding: 9px 11px;
+                font: inherit;
+                background: var(--surface);
+                color: var(--text);
+            }
+
+            .filter-field input:focus,
+            .filter-field select:focus {
+                outline: 2px solid var(--accent-soft);
+                border-color: var(--accent);
+            }
+
             .modal-overlay {
                 position: fixed;
                 inset: 0;
@@ -300,6 +336,102 @@
                 color: var(--muted);
                 font-size: 1.3rem;
                 cursor: pointer;
+            }
+
+            .activity-content {
+                display: grid;
+                gap: 10px;
+            }
+
+            .activity-list {
+                display: grid;
+                gap: 10px;
+            }
+
+            .activity-item {
+                padding: 12px 12px 10px;
+                border: 1px solid var(--border);
+                border-radius: 12px;
+                background: var(--surface-muted);
+            }
+
+            .activity-item-title {
+                font-weight: 700;
+                margin-bottom: 6px;
+            }
+
+            .activity-item p {
+                margin: 6px 0 0;
+                color: var(--muted);
+                font-size: 0.9rem;
+            }
+
+            .activity-meta {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                gap: 8px;
+                flex-wrap: wrap;
+                font-size: 0.84rem;
+                color: var(--muted);
+            }
+
+            .activity-pill {
+                display: inline-flex;
+                align-items: center;
+                border-radius: 999px;
+                padding: 4px 8px;
+                font-weight: 600;
+                text-transform: uppercase;
+                letter-spacing: 0.04em;
+                background: var(--accent-soft);
+                color: var(--accent);
+            }
+
+            .activity-loading {
+                padding: 12px;
+                border-radius: 12px;
+                background: var(--surface-muted);
+                color: var(--muted);
+                text-align: center;
+                border: 1px dashed var(--border);
+            }
+
+            .activity-actions {
+                justify-content: flex-start;
+            }
+
+            .activity-pagination {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                width: 100%;
+            }
+
+            .activity-pagination button {
+                border: 1px solid var(--border);
+                border-radius: 999px;
+                padding: 7px 10px;
+                font-size: 0.85rem;
+                font-weight: 600;
+                background: var(--surface);
+                color: var(--text);
+                cursor: pointer;
+            }
+
+            .activity-pagination button:disabled {
+                opacity: 0.6;
+                cursor: not-allowed;
+            }
+
+            .activity-page-indicator {
+                color: var(--muted);
+                font-size: 0.9rem;
+                margin: 0 auto;
+            }
+
+            [hidden] {
+                display: none !important;
             }
 
             .form-grid {
@@ -376,58 +508,110 @@
                 <p>Drag tasks between columns to update their status</p>
             </div>
             <div class="header-actions">
+                <button type="button" id="activity-log-btn" class="action-button secondary">Activity Log</button>
                 <button type="button" id="new-task-btn" class="action-button primary">New Task</button>
             </div>
         </header>
         <main>
+            <section class="filters-bar" aria-label="Task filters">
+                <div class="filter-field">
+                    <label for="filter-search">Search</label>
+                    <input id="filter-search" type="text" placeholder="Search tasks" />
+                </div>
+                <div class="filter-field">
+                    <label for="filter-status">Status</label>
+                    <select id="filter-status">
+                        <option value="">All</option>
+                        <option value="ToDo">ToDo</option>
+                        <option value="InProgress">In Progress</option>
+                        <option value="Done">Completed</option>
+                    </select>
+                </div>
+                <div class="filter-field">
+                    <label for="filter-priority">Priority</label>
+                    <select id="filter-priority">
+                        <option value="">All</option>
+                        <option value="High">High</option>
+                        <option value="Medium">Medium</option>
+                        <option value="Low">Low</option>
+                    </select>
+                </div>
+                <div class="filter-field">
+                    <label for="filter-assignee">Assignee</label>
+                    <input id="filter-assignee" type="text" placeholder="Exact match" />
+                </div>
+                <button type="button" id="clear-filters-btn" class="action-button secondary">Clear filters</button>
+            </section>
             <section id="board" class="board" aria-live="polite"></section>
         </main>
 
         <div class="modal-overlay" id="modal-overlay" aria-hidden="true">
             <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="modal-title">
-                <div class="modal-header">
-                    <h2 id="modal-title">New Task</h2>
-                    <button type="button" id="modal-close-btn" class="modal-close" aria-label="Close">×</button>
+                <div id="task-modal-panel">
+                    <div class="modal-header">
+                        <h2 id="modal-title">New Task</h2>
+                        <button type="button" id="modal-close-btn" class="modal-close" aria-label="Close">×</button>
+                    </div>
+                    <form id="task-form" novalidate>
+                        <div id="form-banner" class="form-banner" role="alert"></div>
+                        <input type="hidden" id="task-id" name="taskId" />
+                        <div class="form-grid">
+                            <div class="field">
+                                <label for="task-title">Title</label>
+                                <input id="task-title" name="title" type="text" />
+                                <div id="title-error" class="error-text" aria-live="polite"></div>
+                            </div>
+                            <div class="field">
+                                <label for="task-description">Description</label>
+                                <textarea id="task-description" name="description"></textarea>
+                            </div>
+                            <div class="field">
+                                <label for="task-status">Status</label>
+                                <select id="task-status" name="status">
+                                    <option value="ToDo">ToDo</option>
+                                    <option value="InProgress">In Progress</option>
+                                    <option value="Done">Done</option>
+                                </select>
+                            </div>
+                            <div class="field">
+                                <label for="task-priority">Priority</label>
+                                <select id="task-priority" name="priority">
+                                    <option value="High">High</option>
+                                    <option value="Medium">Medium</option>
+                                    <option value="Low">Low</option>
+                                </select>
+                            </div>
+                            <div class="field">
+                                <label for="task-assignee">Assignee</label>
+                                <input id="task-assignee" name="assignee" type="text" />
+                            </div>
+                        </div>
+                        <div class="modal-actions">
+                            <button type="button" id="cancel-task-btn" class="action-button secondary">Cancel</button>
+                            <button type="submit" class="action-button primary">Save Task</button>
+                        </div>
+                    </form>
                 </div>
-                <form id="task-form" novalidate>
-                    <div id="form-banner" class="form-banner" role="alert"></div>
-                    <input type="hidden" id="task-id" name="taskId" />
-                    <div class="form-grid">
-                        <div class="field">
-                            <label for="task-title">Title</label>
-                            <input id="task-title" name="title" type="text" />
-                            <div id="title-error" class="error-text" aria-live="polite"></div>
-                        </div>
-                        <div class="field">
-                            <label for="task-description">Description</label>
-                            <textarea id="task-description" name="description"></textarea>
-                        </div>
-                        <div class="field">
-                            <label for="task-status">Status</label>
-                            <select id="task-status" name="status">
-                                <option value="ToDo">ToDo</option>
-                                <option value="InProgress">In Progress</option>
-                                <option value="Done">Done</option>
-                            </select>
-                        </div>
-                        <div class="field">
-                            <label for="task-priority">Priority</label>
-                            <select id="task-priority" name="priority">
-                                <option value="High">High</option>
-                                <option value="Medium">Medium</option>
-                                <option value="Low">Low</option>
-                            </select>
-                        </div>
-                        <div class="field">
-                            <label for="task-assignee">Assignee</label>
-                            <input id="task-assignee" name="assignee" type="text" />
+
+                <div id="activity-modal-panel" hidden>
+                    <div class="modal-header">
+                        <h2 id="activity-modal-title">Activity Log</h2>
+                        <button type="button" id="activity-modal-close-btn" class="modal-close" aria-label="Close">×</button>
+                    </div>
+                    <div class="activity-content">
+                        <div id="activity-loading" class="activity-loading" hidden>Loading activity…</div>
+                        <div id="activity-error" class="error-card" hidden></div>
+                        <div id="activity-list" class="activity-list" hidden></div>
+                        <div id="activity-empty" class="empty-state" hidden>No activity yet</div>
+                    </div>
+                    <div class="modal-actions activity-actions">
+                        <div class="activity-pagination" id="activity-pagination" hidden>
+                            <button type="button" id="activity-prev-btn" class="action-button secondary">Previous</button>
+                            <span id="activity-page-indicator" class="activity-page-indicator">Page 1</span>
+                            <button type="button" id="activity-next-btn" class="action-button secondary">Next</button>
                         </div>
                     </div>
-                    <div class="modal-actions">
-                        <button type="button" id="cancel-task-btn" class="action-button secondary">Cancel</button>
-                        <button type="submit" class="action-button primary">Save Task</button>
-                    </div>
-                </form>
+                </div>
             </div>
         </div>
         <script>
@@ -436,7 +620,7 @@
             const statusLabels = {
                 'ToDo': 'ToDo',
                 'InProgress': 'In Progress',
-                'Done': 'Done'
+                'Done': 'Completed'
             };
             const PRIORITY_ORDER = {
                 'High': 0,
@@ -447,8 +631,26 @@
             let tasks = [];
             let boardState = 'loading';
             let errorMessage = '';
+            let activeModal = null;
+            let activityItems = [];
+            let activityPage = 1;
+            let activityHasMore = false;
+            let activityLoading = false;
+            let activityErrorMessage = '';
+            const ACTIVITY_PAGE_SIZE = 5;
 
             const board = document.getElementById('board');
+            const searchFilterInput = document.getElementById('filter-search');
+            const statusFilterSelect = document.getElementById('filter-status');
+            const priorityFilterSelect = document.getElementById('filter-priority');
+            const assigneeFilterInput = document.getElementById('filter-assignee');
+            const clearFiltersButton = document.getElementById('clear-filters-btn');
+            let activeFilters = {
+                q: '',
+                status: '',
+                priority: '',
+                assignee: '',
+            };
 
             function getTaskIdValue(task) {
                 const numericId = Number(task.id);
@@ -528,12 +730,127 @@
                 board.innerHTML = groupedTasks.join('');
             }
 
-            async function fetchTasks() {
+            function formatActivityTimestamp(value) {
+                const date = new Date(value);
+                if (Number.isNaN(date.getTime())) {
+                    return value || '';
+                }
+                return date.toLocaleString();
+            }
+
+            function renderActivityLog() {
+                activityLoading ? activityLoadingElement.hidden = false : activityLoadingElement.hidden = true;
+                activityErrorElement.hidden = true;
+                activityListElement.hidden = true;
+                activityEmptyElement.hidden = true;
+                activityPagination.hidden = true;
+
+                if (activityLoading) {
+                    return;
+                }
+
+                if (activityErrorMessage) {
+                    activityErrorElement.textContent = activityErrorMessage;
+                    activityErrorElement.hidden = false;
+                    return;
+                }
+
+                if (!activityItems.length) {
+                    activityEmptyElement.hidden = false;
+                    return;
+                }
+
+                activityListElement.innerHTML = activityItems.map((event) => {
+                    const actionLabel = event?.event_type === 'task_updated' ? 'updated' : event?.event_type === 'task_deleted' ? 'deleted' : 'created';
+                    const detailText = event?.event_type === 'task_updated' && Array.isArray(event?.changed_fields) && event.changed_fields.length
+                        ? `Changed fields: ${event.changed_fields.join(', ')}`
+                        : '';
+
+                    return `
+                        <article class="activity-item">
+                            <div class="activity-item-title">Task ${String(event?.task_id ?? '')} ${actionLabel}</div>
+                            <div class="activity-meta">
+                                <span class="activity-pill">${actionLabel}</span>
+                                <span>${formatActivityTimestamp(event?.timestamp)}</span>
+                            </div>
+                            ${detailText ? `<p>${detailText}</p>` : ''}
+                        </article>
+                    `;
+                }).join('');
+
+                activityListElement.hidden = false;
+                activityPagination.hidden = false;
+                activityPrevButton.disabled = activityPage <= 1;
+                activityNextButton.disabled = !activityHasMore;
+                activityPageIndicator.textContent = `Page ${activityPage}`;
+            }
+
+            async function loadActivityLog(page = 1) {
+                if (activityLoading) {
+                    return;
+                }
+
+                activityLoading = true;
+                activityErrorMessage = '';
+                renderActivityLog();
+
+                try {
+                    const offset = (page - 1) * ACTIVITY_PAGE_SIZE;
+                    const response = await fetch(`${API_BASE}/activity?limit=${ACTIVITY_PAGE_SIZE}&offset=${offset}`);
+                    if (!response.ok) {
+                        throw new Error(`Request failed with status ${response.status}`);
+                    }
+
+                    const data = await response.json();
+                    if (!Array.isArray(data)) {
+                        throw new Error('Unexpected activity response.');
+                    }
+
+                    activityItems = data;
+                    activityPage = page;
+                    activityHasMore = data.length === ACTIVITY_PAGE_SIZE;
+                } catch (error) {
+                    activityErrorMessage = error.message || 'Unable to load activity log.';
+                    activityItems = [];
+                    activityPage = page > 1 ? page : 1;
+                } finally {
+                    activityLoading = false;
+                    renderActivityLog();
+                }
+            }
+
+            function buildFilterQuery(filters = activeFilters) {
+                const params = new URLSearchParams();
+                if (filters?.q) {
+                    params.set('q', filters.q);
+                }
+                if (filters?.status) {
+                    params.set('status', filters.status);
+                }
+                if (filters?.priority) {
+                    params.set('priority', filters.priority);
+                }
+                if (filters?.assignee) {
+                    params.set('assignee', filters.assignee);
+                }
+
+                const queryString = params.toString();
+                return queryString ? `?${queryString}` : '';
+            }
+
+            async function fetchTasks(filters = activeFilters) {
+                activeFilters = {
+                    q: filters?.q ?? '',
+                    status: filters?.status ?? '',
+                    priority: filters?.priority ?? '',
+                    assignee: filters?.assignee ?? '',
+                };
+
                 boardState = 'loading';
                 render();
 
                 try {
-                    const response = await fetch(`${API_BASE}/tasks`);
+                    const response = await fetch(`${API_BASE}/tasks${buildFilterQuery(activeFilters)}`);
                     if (!response.ok) {
                         throw new Error(`Request failed with status ${response.status}`);
                     }
@@ -552,6 +869,7 @@
             // --- Modal helpers ---
             const modalOverlay = document.getElementById('modal-overlay');
             const modalTitle = document.getElementById('modal-title');
+            const taskModalPanel = document.getElementById('task-modal-panel');
             const modalForm = document.getElementById('task-form');
             const taskIdInput = document.getElementById('task-id');
             const titleInput = document.getElementById('task-title');
@@ -564,6 +882,17 @@
             const newTaskButton = document.getElementById('new-task-btn');
             const modalCloseButton = document.getElementById('modal-close-btn');
             const cancelTaskButton = document.getElementById('cancel-task-btn');
+            const activityLogButton = document.getElementById('activity-log-btn');
+            const activityModalPanel = document.getElementById('activity-modal-panel');
+            const activityLoadingElement = document.getElementById('activity-loading');
+            const activityErrorElement = document.getElementById('activity-error');
+            const activityListElement = document.getElementById('activity-list');
+            const activityEmptyElement = document.getElementById('activity-empty');
+            const activityPagination = document.getElementById('activity-pagination');
+            const activityPrevButton = document.getElementById('activity-prev-btn');
+            const activityNextButton = document.getElementById('activity-next-btn');
+            const activityPageIndicator = document.getElementById('activity-page-indicator');
+            const activityCloseButton = document.getElementById('activity-modal-close-btn');
 
             function clearModalErrors() {
                 titleError.textContent = '';
@@ -582,6 +911,13 @@
             }
 
             function openModal(mode, task = null) {
+                activeModal = 'task';
+                if (taskModalPanel) {
+                    taskModalPanel.hidden = false;
+                }
+                if (activityModalPanel) {
+                    activityModalPanel.hidden = true;
+                }
                 resetModalForm();
                 modalTitle.textContent = mode === 'edit' ? 'Edit Task' : 'New Task';
 
@@ -599,10 +935,38 @@
                 titleInput.focus();
             }
 
+            function openActivityModal() {
+                activeModal = 'activity';
+                if (taskModalPanel) {
+                    taskModalPanel.hidden = true;
+                }
+                if (activityModalPanel) {
+                    activityModalPanel.hidden = false;
+                }
+                activityItems = [];
+                activityPage = 1;
+                activityHasMore = false;
+                activityErrorMessage = '';
+                activityLoading = false;
+                renderActivityLog();
+                modalOverlay.classList.add('open');
+                modalOverlay.setAttribute('aria-hidden', 'false');
+                void loadActivityLog(1);
+            }
+
             function closeModal() {
                 modalOverlay.classList.remove('open');
                 modalOverlay.setAttribute('aria-hidden', 'true');
-                resetModalForm();
+                if (activeModal === 'task') {
+                    resetModalForm();
+                }
+                if (taskModalPanel) {
+                    taskModalPanel.hidden = true;
+                }
+                if (activityModalPanel) {
+                    activityModalPanel.hidden = true;
+                }
+                activeModal = null;
             }
 
             function getServerErrorMessage(body) {
@@ -634,9 +998,69 @@
                 formBanner.classList.add('visible');
             }
 
+            function syncFilterInputs(filters = activeFilters) {
+                if (searchFilterInput) {
+                    searchFilterInput.value = filters.q || '';
+                }
+                if (statusFilterSelect) {
+                    statusFilterSelect.value = filters.status || '';
+                }
+                if (priorityFilterSelect) {
+                    priorityFilterSelect.value = filters.priority || '';
+                }
+                if (assigneeFilterInput) {
+                    assigneeFilterInput.value = filters.assignee || '';
+                }
+            }
+
+            function applyFiltersFromInputs() {
+                const filters = {
+                    q: searchFilterInput?.value.trim() || '',
+                    status: statusFilterSelect?.value || '',
+                    priority: priorityFilterSelect?.value || '',
+                    assignee: assigneeFilterInput?.value.trim() || '',
+                };
+                return fetchTasks(filters);
+            }
+
             newTaskButton.addEventListener('click', () => openModal('create'));
+            activityLogButton.addEventListener('click', () => openActivityModal());
             modalCloseButton.addEventListener('click', closeModal);
+            activityCloseButton.addEventListener('click', closeModal);
             cancelTaskButton.addEventListener('click', closeModal);
+            activityPrevButton.addEventListener('click', () => {
+                if (activityPage > 1) {
+                    void loadActivityLog(activityPage - 1);
+                }
+            });
+            activityNextButton.addEventListener('click', () => {
+                if (activityHasMore) {
+                    void loadActivityLog(activityPage + 1);
+                }
+            });
+
+            searchFilterInput?.addEventListener('input', () => {
+                void applyFiltersFromInputs();
+            });
+            statusFilterSelect?.addEventListener('change', () => {
+                void applyFiltersFromInputs();
+            });
+            priorityFilterSelect?.addEventListener('change', () => {
+                void applyFiltersFromInputs();
+            });
+            assigneeFilterInput?.addEventListener('input', () => {
+                void applyFiltersFromInputs();
+            });
+            clearFiltersButton?.addEventListener('click', () => {
+                activeFilters = {
+                    q: '',
+                    status: '',
+                    priority: '',
+                    assignee: '',
+                };
+                syncFilterInputs(activeFilters);
+                void fetchTasks(activeFilters);
+            });
 
             modalOverlay.addEventListener('click', (event) => {
                 if (event.target === modalOverlay) {

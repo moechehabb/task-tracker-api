@@ -1,6 +1,6 @@
 from datetime import datetime
 from enum import Enum
-from typing import Optional
+from typing import List, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, field_validator
 
@@ -70,3 +70,11 @@ class TaskResponse(BaseModel):
     assignee: Optional[str]
     created_at: datetime
     updated_at: datetime
+
+class ActivityEvent(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    event_type: Literal["task_created", "task_updated", "task_deleted"]
+    task_id: str
+    timestamp: datetime
+    changed_fields: Optional[List[str]] = None

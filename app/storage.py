@@ -1,10 +1,14 @@
+import logging
 import uuid
 from datetime import datetime, timezone
 from typing import Optional
 
-from app.models import TaskCreate, TaskPriority, TaskResponse, TaskStatus, TaskUpdate
+from app.models import ActivityEvent, TaskCreate, TaskPriority, TaskResponse, TaskStatus, TaskUpdate
+
+_logger = logging.getLogger(__name__)
 
 _tasks: dict[str, TaskResponse] = {}
+_events: list[ActivityEvent] = []
 
 
 def add_task(payload: TaskCreate) -> TaskResponse:
@@ -69,5 +73,18 @@ def delete_task(task_id: str) -> bool:
     return False
 
 
+def record_event(event: ActivityEvent) -> None:
+    try:
+        _events.append(event)
+    except Exception as exc:
+        _logger.error("failed to record activity event: %s", exc)
+
+
+def get_activity(limit: int = 5, offset: int = 0) -> list[ActivityEvent]:
+    events = sorted(_events, key=lambda item: item.timestamp, reverse=True)
+    return events[offset : offset + limit]
+
+
 def _reset() -> None:
     _tasks.clear()
+    _events.clear()
