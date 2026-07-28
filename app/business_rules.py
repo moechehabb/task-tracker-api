@@ -13,6 +13,18 @@ VALID_TRANSITIONS: frozenset[tuple[TaskStatus, TaskStatus]] = frozenset({
 
 
 def validate_status_transition(current: TaskStatus, new: TaskStatus) -> None:
+    """Validate whether a task status change is permitted.
+
+    Args:
+        current: The task's current status.
+        new: The requested next status.
+
+    Returns:
+        None.
+
+    Raises:
+        HTTPException: If the transition is not allowed, a 422 error is raised.
+    """
     if (current, new) not in VALID_TRANSITIONS:
         allowed = sorted({f"{f.value}->{t.value}" for f, t in VALID_TRANSITIONS})
         raise HTTPException(
