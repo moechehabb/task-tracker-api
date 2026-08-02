@@ -2,18 +2,17 @@
 
 A simple task management app with a FastAPI backend and a static frontend.
 
-## Project structure
+## Final Project
 
-- `app/` — FastAPI application, business rules, storage, and models
-- `frontend/` — static HTML/CSS/JavaScript UI
-- `tests/` — pytest-based tests
+Branch reviewed: final-project
 
-## Requirements
+### What this submission demonstrates
+- The existing Task Tracker app still runs inside the intended course scope.
+- CI runs the pytest suite on push and pull request.
+- The Docker image builds and runs with /health returning 200.
+- AI review, security, and ownership evidence is collected in docs/.
 
-- Python 3.10+
-- pip
-
-## Setup
+### How to run locally
 
 From the project root, create and activate a virtual environment and install dependencies:
 
@@ -23,12 +22,10 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-## Run the backend
-
 Start the API server:
 
 ```bash
-uvicorn app.main:app --reload
+uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
 The API will be available at:
@@ -36,25 +33,48 @@ The API will be available at:
 - http://127.0.0.1:8000/docs for the Swagger UI
 - http://127.0.0.1:8000/health for the health check endpoint
 
-## View the frontend
-
-The frontend is a static page that calls the backend API.
-
-1. Start the backend as shown above.
-2. In a second terminal, serve the frontend files:
+Serve the frontend in a second terminal:
 
 ```bash
 python3 -m http.server 5500 --directory frontend
 ```
 
-3. Open the UI in your browser:
+Open the UI in your browser at http://127.0.0.1:5500.
 
-```text
-http://127.0.0.1:5500
-```
-
-## Run tests
+### How to run tests
 
 ```bash
-python3 -m pytest
+pytest -v
 ```
+
+### How to run with Docker
+
+```bash
+docker build -t task-tracker-api .
+docker run --rm -p 8000:8000 task-tracker-api
+curl http://127.0.0.1:8000/health
+```
+
+### Evidence files
+- docs/release-evidence.md
+- docs/final-ai-review.md
+- docs/ai-playbook.md
+
+### AI assistance summary
+
+AI helped draft or review: CI, Docker, docs, and debugging.
+I verified the work by: running pytest, reviewing diffs, starting the API, checking /health, and validating the Docker container.
+One AI suggestion I rejected or corrected: I rejected a proposal to expand the app beyond the course scope and kept the work limited to documentation, CI, and release readiness.
+
+## Project structure
+
+- app/ — FastAPI application, business rules, storage, and models
+- frontend/ — static HTML/CSS/JavaScript UI
+- tests/ — pytest-based tests
+- docs/ — release evidence and AI review notes
+
+## Requirements
+
+- Python 3.11+
+- pip
+- Docker (optional for container verification)
